@@ -1,0 +1,154 @@
+version: '3.7'
+services:
+
+  kafka-ui:
+    container_name: kafka-ui
+    image: provectuslabs/kafka-ui:latest
+    ports:
+      - 8080:8080
+    depends_on:
+      kafka:
+        condition: service_started
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      DYNAMIC_CONFIG_ENABLED: "true"
+
+  kafka:
+    image: bitnami/kafka:3.4.1
+    hostname: 192.168.89.83
+    container_name: kafka
+    ports:
+      - 9092:9092
+    environment:
+      KAFKA_HEAP_OPTS: -Xmx512m -Xms512m
+      KAFKA_CFG_NODE_ID: 0
+      KAFKA_CFG_PROCESS_ROLES: controller,broker
+      KAFKA_CFG_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: 0@kafka:9093
+      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "true"
+    volumes:
+      - ./data/kafka:/bitnami/kafka
+
+  # version control for nifi flows
+  registry:
+    image: apache/nifi-registry:latest
+    ports:
+      - "18080:18080"
+    environment:
+      - NIFI_REGISTRY_WEB_HOST=nifi-registry
+      - NIFI_REGISTRY_WEB_PORT=18080
+      - NIFI_REGISTRY_DATABASE_TYPE=sqlite
+      - NIFI_REGISTRY_DATABASE_URL=jdbc:sqlite:/opt/nifi-registry/database/nifi-registry.db
+    volumes:
+      - nifi-registry-data:/opt/nifi-registry/database
+
+  nifi:
+    image: apache/nifi:latest
+    ports:
+      - "8081:8081"
+    volumes:
+      - ./nifi/jar:/opt/nifi/nifi-current/ls-target
+    environment:
+      - NIFI_WEB_HTTP_PORT=8081
+      - ./nifi/database_repository:/opt/nifi/nifi-current/database_repository
+      - ./nifi/flowfile_repository:/opt/nifi/nifi-current/flowfile_repository
+      - ./nifi/content_repository:/opt/nifi/nifi-current/content_repository
+      - ./nifi/provenance_repository:/opt/nifi/nifi-current/provenance_repository
+      - ./nifi/state:/opt/nifi/nifi-current/state
+      - ./nifi/logs:/opt/nifi/nifi-current/logs
+
+
+  opensearch-node1:
+    image: opensearchproject/opensearch:latest
+    container_name: opensearch-node1
+    environment:
+      - cluster.name=opensearch-cluster
+      - node.name=opensearch-node1
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+      - "DISABLE_INSTALL_DEMO_CONFIG=true"
+      - "DISABLE_SECURITY_PLUGIN=true"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    volumes:
+      - opensearch-data:/usr/share/opensearch/data
+    ports:
+      - 9200:9200
+      - 9600:9600
+
+  opensearch-dashboards:
+    image: opensearchproject/opensearch-dashboards:latest
+    container_name: opensearch-dashboards
+    ports:
+      - 5601:5601
+    expose:
+      - "5601"
+    environment:
+      - 'OPENSEARCH_HOSTS=["http://opensearch-node1:9200"]'
+      - "DISABLE_SECURITY_DASHBOARDS_PLUGIN=true"
+
+  minio:
+    image: minio/minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - 'minio_data:/data'
+    environment:
+      MINIO_ROOT_USER: root
+      MINIO_ROOT_PASSWORD: rootroot
+      MINIO_DEFAULT_BUCKETS: ulogs
+    command: server --console-address ":9001" /data
+
+  dremio:
+    image: dremio/dremio-oss:latest
+    platform: linux/x86_64
+    ports:
+      - 9047:9047
+      - 31010:31010
+      - 32010:32010
+
+  nessie:
+    image: ghcr.io/projectnessie/nessie:0.96.1
+    ports:
+      # API port
+      - "19120:19120"
+      # Management port (metrics and health checks)
+      - "1999:1999"
+    environment:
+      # Version store settings.
+      # This example uses ephemeral storage, data is lost during reset.
+      - nessie.version.store.type=IN_MEMORY
+      # Object store settings.
+      # This example uses MinIO as the object store.
+      - nessie.catalog.default-warehouse=warehouse
+      - nessie.catalog.warehouses.warehouse.location=s3://warehouse/
+      - nessie.catalog.service.s3.default-options.region=us-east-1
+      - nessie.catalog.service.s3.default-options.path-style-access=true
+      - nessie.catalog.service.s3.default-options.access-key=urn:nessie-secret:quarkus:nessie.catalog.secrets.access-key
+      - nessie.catalog.secrets.access-key.name=root
+      - nessie.catalog.secrets.access-key.secret=rootroot
+      # MinIO endpoint for Nessie server
+      - nessie.catalog.service.s3.default-options.endpoint=http://192.168.89.83:9000/
+      # MinIO endpoint for clients (on the Podman/Docker host)
+      - nessie.catalog.service.s3.default-options.external-endpoint=http://192.168.89.83:9002/
+    healthcheck:
+      test: "exec 3<>/dev/tcp/localhost/9000 && echo -e 'GET /q/health HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && cat <&3 | grep -q '200 OK'"
+      interval: 5s
+      timeout: 2s
+      retries: 15
+
+volumes:
+  minio_data:
+    driver: local
+  opensearch-data:
+  nifi-registry-data:
