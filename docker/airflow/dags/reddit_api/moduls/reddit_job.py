@@ -1,3 +1,11 @@
+from airflow import DAG
+from datetime import datetime
+from airflow.operators.python_operator import PythonOperator
+from airflow.operators.bash import BashOperator
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname("__file__"), '..')))
+
 
 import requests
 from confluent_kafka import Producer
@@ -7,8 +15,8 @@ import configparser
 import json
 
 config = configparser.ConfigParser()
-config.read('reddit_api/reddit-cred.config')
-
+ini_file_path = os.path.join(os.path.dirname(__file__), 'reddit-cred.config')
+config.read(ini_file_path)
 
 class Prepare:
     def get_data_from_api(self,topic='dataengineering'):
@@ -51,6 +59,11 @@ class Prepare:
             data['URL'] = values['data']['children'][i]['data']['url']
             data['USER_NAME'] = values['data']['children'][i]['data']['author']
             data["WLS"] = values['data']['children'][i]['data']['wls']
+            
+            data["SUBREDDIT"] = values['data']['children'][i]['data']['subreddit']
+            data["SUBREDDIT_TYPE"] = values['data']['children'][i]['data']['subreddit_type']
+            data["SUBREDDIT_SUBSCRIBER_COUNT"] = values['data']['children'][i]['data']['subreddit_subscribers']
+
             fetched_data.append(data)
         return fetched_data
 
@@ -80,7 +93,55 @@ class Prepare:
 
         producer.flush()
 
+    def main(self,name,**context):
+
+        if( name is not None):
+            print(f"Used {name} topics")
+            keyword_list = name.split(',')
+        else:
+            keyword_list = config.get('KEYWORD','keywords').split(',')
+
+        for kw in keyword_list:
+            print("Current Topic:", kw)
+            data = self.get_data_from_api(topic=kw)
+            if data is None:
+                print("Fail fetc data")
+                break
+            formated_data = self.format_data(data)
+            print("Produce Kafka...")
+            self.produce_kafka(fetched_data=formated_data,
+                            topic_name=kw)
+            print("Process Succesful...")
 
 
+def runner(name=None, **kwargs):
+    PR = Prepare()
+    PR.main(name)
 
+
+with DAG(
+    dag_id="Reddit_Search",
+    description="A DAG for Reddit post on spesific subreddit",
+    start_date=datetime(2024, 10, 10),
+    schedule_interval="0 * * * *",
+    catchup=False,
+    params={"name": "turkey,cars,thy"}
+) as dag:
+    
+    dag_run_task = BashOperator(
+        task_id= 'dag_run_conf_task',
+        bash_command= "echo  The sample value given via dag_run config is {{dag_run.conf}} ",
+    )
+
+    task_python = PythonOperator(
+        task_id="Data_Push",
+        python_callable=runner,
+        #op_kwargs={"name": "{{ dag_run.conf['name']}}"},
+        provide_context=True  # Passes the context to the Python function
+    )
+
+    # Set task dependencies
+    task_python
+
+    print("DAG DONE")
 

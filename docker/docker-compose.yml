@@ -5,7 +5,7 @@ services:
     container_name: kafka-ui
     image: provectuslabs/kafka-ui:latest
     ports:
-      - 8080:8080
+      - 9090:8080
     depends_on:
       kafka:
         condition: service_started
@@ -59,8 +59,7 @@ services:
       - ./nifi/provenance_repository:/opt/nifi/nifi-current/provenance_repository
       - ./nifi/state:/opt/nifi/nifi-current/state
       - ./nifi/logs:/opt/nifi/nifi-current/logs
-
-
+  
   opensearch-node1:
     image: opensearchproject/opensearch:latest
     container_name: opensearch-node1
@@ -116,7 +115,7 @@ services:
       - 9047:9047
       - 31010:31010
       - 32010:32010
-
+  
   nessie:
     image: ghcr.io/projectnessie/nessie:0.96.1
     ports:
@@ -140,7 +139,14 @@ services:
       # MinIO endpoint for Nessie server
       - nessie.catalog.service.s3.default-options.endpoint=http://192.168.89.83:9000/
       # MinIO endpoint for clients (on the Podman/Docker host)
-      - nessie.catalog.service.s3.default-options.external-endpoint=http://192.168.89.83:9002/
+      - nessie.catalog.service.s3.default-options.external-endpoint=http://192.168.89.83:9001/
+      # Authorization settings.
+      # In this example, Nessie is configured with 3 clients and 3 rules:
+      # - client1: can access all namespaces
+      # - client2: can access all namespaces except 'sales'
+      # - client3: can access all namespaces except 'eng'
+      # - nessie.server.authorization.enabled=true
+      # - nessie.server.authorization.rules.client1=role=='service-account'
     healthcheck:
       test: "exec 3<>/dev/tcp/localhost/9000 && echo -e 'GET /q/health HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && cat <&3 | grep -q '200 OK'"
       interval: 5s
@@ -152,3 +158,4 @@ volumes:
     driver: local
   opensearch-data:
   nifi-registry-data:
+  postgres-db-volume:
