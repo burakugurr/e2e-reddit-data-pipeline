@@ -1,3 +1,64 @@
 .venv/*
 .venv
 reddit_api/reddit-cred.config
+./docker/airflow/*
+./docker/airflow/logs/*
+# Python derlenmiş dosyalar
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Çalışma ortamı / IDE dosyaları
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Sanal ortam (virtualenv)
+venv/
+.env/
+.venv/
+env/
+
+# Airflow log ve PID dosyaları
+airflow.cfg
+logs/
+*.pid
+
+# SQLite veritabanı dosyası (local development için)
+airflow.db
+*.db
+
+# Airflow workspace tmp dosyaları
+tmp/
+airflow-webserver.pid
+unittests.cfg
+
+# Paket yöneticisi dosyaları
+pip-log.txt
+pip-delete-this-directory.txt
+
+# MacOS veya diğer sistem meta-dosyaları
+.DS_Store
+Thumbs.db
+
+# Docker ve Kubernetes çıktıları
+docker-compose*.yaml
+*.log
+
+# Airflow secrets veya credentials dosyaları
+secrets.env
+config/*.json
+*.key
+*.pem
+
+# Checkpoint dosyaları
+.ipynb_checkpoints/
+*.checkpoint
+checkpoint/
+
+# Kafka log ve veri dosyaları
+kafka/
+*.log
+data/kafka/
+data/zookeeper/

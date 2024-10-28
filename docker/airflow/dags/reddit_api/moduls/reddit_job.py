@@ -136,7 +136,7 @@ with DAG(
     task_python = PythonOperator(
         task_id="Data_Push",
         python_callable=runner,
-        #op_kwargs={"name": "{{ dag_run.conf['name']}}"},
+        #op_kwargs={"name": "{{ dag_run.conf['name']}}"}, 
         provide_context=True  # Passes the context to the Python function
     )
 
