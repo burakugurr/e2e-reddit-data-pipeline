@@ -1,5 +1,3 @@
-# Creating the updated README.md file with the new section
-
 # e2e Reddit Data Pipeline for Data Lakehouse
 
 ## Project Overview
@@ -32,6 +30,8 @@ This section ensures that anyone interacting with the project can get started ea
 
 ## Getting Started
 
+In this project, we will examine posts made to desired topics in real time using the reddit api.
+
 ### Prerequisites
 
 Make sure you have the following installed:
@@ -51,13 +51,11 @@ Make sure you have the following installed:
 
 ## Articles
 
-[medium1](https://burakugur.medium.com/810eebc47757?source=friends_link&sk=b9bdf94c3d3c2a9c5380fcf85460d82c)
+[medium-Introduction](https://burakugur.medium.com/810eebc47757?source=friends_link&sk=b9bdf94c3d3c2a9c5380fcf85460d82c)
 
-[medium12](https://burakugur.medium.com/07dd18b804d4?source=friends_link&sk=03718d7f676dbcdea846b47baee07be2)
+[medium-Create-Lakehouse](https://burakugur.medium.com/07dd18b804d4?source=friends_link&sk=03718d7f676dbcdea846b47baee07be2)
 
-## Licances
-
-[MIT](https://choosealicense.com/licenses/mit/)
+## Licens
 
 [![MIT License](https://img.shields.io/badge/License-MIT-green.svg)](https://choosealicense.com/licenses/mit/)
 
